@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Lightweight Viewer</title>
+    <title>RSNA CrowdQuant</title>
     <meta name="viewport" content="initial-scale=1">
 
     <link rel="stylesheet" type="text/css" href="./style.css">
@@ -140,7 +140,7 @@
           <div class="tool">
             <a href="/#" data-tool="wwwc">
               <svg class="tool-img">
-                <use href="/imgs/icons.svg#icon-status-complete"></use>
+                <use xlink:href="/imgs/icons.svg#icon-status-complete" href="/imgs/icons.svg#icon-status-complete"></use>
               </svg>
               W/L
             </a>
@@ -148,7 +148,7 @@
           <div class="tool">
             <a href="/#" data-tool="length">
               <svg class="tool-img">
-                <use href="/imgs/icons.svg#icon-tools-measure-temp"></use>
+                <use xlink:href="/imgs/icons.svg#icon-tools-measure-temp" href="/imgs/icons.svg#icon-tools-measure-temp"></use>
               </svg>
               Length
             </a>
@@ -156,7 +156,7 @@
           <div class="tool">
             <a href="/#" data-tool="pan">
               <svg class="tool-img">
-                <use href="/imgs/icons.svg#icon-tools-pan"></use>
+                <use xlink:href="/imgs/icons.svg#icon-tools-pan" href="/imgs/icons.svg#icon-tools-pan"></use>
               </svg>
               Pan
             </a>
@@ -164,7 +164,7 @@
           <div class="tool">
             <a href="/#" data-tool="zoom">
               <svg class="tool-img">
-                <use href="/imgs/icons.svg#icon-tools-zoom"></use>
+                <use xlink:href="/imgs/icons.svg#icon-tools-zoom" href="/imgs/icons.svg#icon-tools-zoom"></use>
               </svg>
               Zoom
             </a>
@@ -172,28 +172,29 @@
           <div class="tool">
             <a href="/#" data-command="save">
               <svg>
-                <use href="./imgs/icons.svg#icon-status-complete"></use>
+                <use xlink:href="./imgs/icons.svg#icon-status-complete" href="./imgs/icons.svg#icon-status-complete"></use>
               </svg>
               Save
             </a>
           </div>
           <div class="tool">
+            <a href="/#" data-command="skip">
+              <svg>
+                <use xlink:href="./imgs/icons.svg#icon-tools-more" href="./imgs/icons.svg#icon-tools-more"></use>
+              </svg>
+              Skip Case
+            </a>
+          </div>
+          <div class="tool">
             <a href="/#" data-command="clearAll">
               <svg>
-                <use href="/imgs/icons.svg#icon-ui-close"></use>
+                <use xlink:href="/imgs/icons.svg#icon-ui-close" href="/imgs/icons.svg#icon-ui-close"></use>
               </svg>
               Clear
             </a>
           </div>
         </div>
 
-        <div class="humburguer-menu">
-          <a class="menu">
-            <div class="humburguer-stroke"></div>
-            <div class="humburguer-stroke"></div>
-            <div class="humburguer-stroke"></div>
-          </a>
-        </div>
       </div>
       <div class="viewport">
         <div id="conerstoneViewport"></div>
@@ -244,6 +245,10 @@
     <script type="text/javascript" src="../node_modules/cornerstone-wado-image-loader/dist/cornerstoneWADOImageLoader.min.js"></script>
     <script type="text/javascript" src="./bundle.js"></script>
     <script type="text/javascript">
+
+    $(document).ready(function() {
+      $('#login-username').val(window.localStorage.getItem('username'));
+    });
 
     </script>
   </body>

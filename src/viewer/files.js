@@ -1,5 +1,6 @@
 import Connector from './connector';
-import {chronicleURL, chronicleDB} from '../db/db';
+import Login from '../login/login';
+import {chronicleURL, chronicleDB, measurementsDB} from '../db/db';
 
 export default {
   getFile(url) {
@@ -34,6 +35,12 @@ export default {
     return this.getChronicleImageIDs().then((caseStudy) => {
       if (caseStudy && caseStudy.urls) {
         // console.log('getCaseImages0');
+
+        // where to store the case id for access during save?
+        // I don't understand the model heirarchy, so let's stick it on the window
+        window.rsnaCrowdQuantSeriesUID = caseStudy.seriesUID;
+        window.rsnaCrowdQuantCaseStudy = caseStudy;
+
         return Promise.all(caseStudy.urls.map(this.getFile)).then(function (files) {
           // console.log('getCaseImages1');
           $overlay.addClass('invisible');
@@ -65,6 +72,7 @@ export default {
   },
 
   currentSeriesIndex: undefined,
+  seriesUID_A: undefined,
 
   getChronicleImageIDs () {
     return chronicleDB.query("instances/context", {
@@ -75,36 +83,24 @@ export default {
       // endkey: [['UnspecifiedInstitution', 'TCGA-17-Z013']],
       group_level : 3,
     }).then((data) => {
-      // console.log('data:', data);
-      // [key.institution,key.patientID],
-      // [key.studyDescription,key.studyUID],
-      // [key.modality,key.seriesDescription,key.seriesUID],
-      // key.instanceUID
-      //
-      // ["UnspecifiedInstitution", "TCGA-17-Z011"]
-      // ["UnspecifiedStudyDescription", "1.3.6.1.4.1.14519.5.2.1.7777.9002.242742387344636595876380532248"]
-      // ["CT", "UnspecifiedSeriesDescription", "1.3.6.1.4.1.14519.5.2.1.7777.9002.106684271246229903146411807044"]
 
-      // console.log('The number of series:', data.rows.length);
-      // const rand = Math.floor(data.rows.length*Math.random());
-      // console.log("random:", rand);
-      // console.log('row:', data.rows[rand]);
+      var annotatorID = Login.username;
+      return this.getNextSeriesForAnnotator(annotatorID);
+  }).then ((seriesUID) => {
 
-      // const key = data.rows[rand].key;
-      if(!this.currentSeriesIndex){
+      if(!this.currentSeriesIndex) {
         this.currentSeriesIndex = 0;
       }
+      this.currentSeriesIndex++;
       console.log('series Index:', this.currentSeriesIndex);
 
-      const key = data.rows[this.currentSeriesIndex].key;
-
-      this.currentSeriesIndex++;
+      //const key = data.rows[this.currentSeriesIndex].key;
 
       // if(currentSeriesIndex >= data.rows.length){
       //   currentSeriesIndex=0;
       // }
 
-      const seriesUID = key[2][2];
+      this.seriesUID_A = seriesUID;
       console.log('series UID:', seriesUID);
 
       return chronicleDB.query("instances/seriesInstances", {
@@ -140,19 +136,87 @@ export default {
         return a - b;
       });
 
-      let instanceIDs = [];
+      let instanceURLs = [];
+      let instanceUIDs = [];
       imageNumbers.forEach((imageNumber) => {
         const instanceUID = instanceUIDsByImageNumber[imageNumber];
         const instanceURL = `${chronicleURL}/${instanceUID}/object.dcm`;
-        instanceIDs.push(instanceURL);
+        instanceURLs.push(instanceURL);
+        instanceUIDs.push(instanceUID);
       });
 
       return {
         name: "default_case",
-        urls: instanceIDs
+        seriesUID: this.seriesUID_A,
+        currentSeriesIndex: this.currentSeriesIndex - 1,
+        urls: instanceURLs,
+        instanceUIDs: instanceUIDs
       };
     }).catch((err) => {
       throw err;
     });
+  },
+
+  getNextSeriesForAnnotator(annotatorID) {
+
+    let measurementsPerSeries = {};
+    let annotatorMeasuredSeries = {};
+    let seriesUIDs = [];
+
+    // first, get list of all series (this should be factored out to be global and only queried once)
+    return chronicleDB.query('instances/context', {
+      reduce: true,
+      group: true,
+      group_level: 3,
+    }).then(function (result) {
+
+      result.rows.forEach(row => {
+        seriesUIDs.push(row.key[2][2]);
+      });
+
+      // then get the list of all measurements per series and how many measurements
+      // (not all series will have been measured)
+      return measurementsDB.query('by/seriesUID', {
+        reduce: true,
+        group: true,
+        level: 'exact',
+      })
+    }).then(function (result) {
+        result.rows.forEach(row => {
+          measurementsPerSeries[row.key] = row.value;
+        });
+
+        return measurementsDB.query('by/annotators', {
+          reduce: false,
+          include_docs: true,
+          start_key: annotatorID,
+          end_key: annotatorID,
+        })
+    }).then(function (result) {
+
+      result.rows.forEach(row => {
+        annotatorMeasuredSeries[row.doc.seriesUID] = true;
+      });
+
+      // now reconcile the data
+      // - look through each available series
+      // -- if nobody has measured it then use it
+      // - if the user already measured it, ignore it
+      // - otherwise find the least measured one
+      let leastMeasured = {seriesUID: undefined, measurementCount: Number.MAX_SAFE_INTEGER};
+      for (let seriesIndex = 0; seriesIndex < seriesUIDs.length; seriesIndex++) {
+        let seriesUID = seriesUIDs[seriesIndex];
+        if ( ! (seriesUID in measurementsPerSeries) ) {
+          return seriesUID;
+
+        }
+        if ( (! (seriesUID in annotatorMeasuredSeries)) &&
+              (measurementsPerSeries[seriesUID] < leastMeasured.measurementCount) ) {
+          leastMeasured.seriesUID = seriesUID;
+          leastMeasured.measurementCount = measurementsPerSeries[seriesUID];
+        }
+      }
+      return leastMeasured.seriesUID;
+    })
   }
-};
+}

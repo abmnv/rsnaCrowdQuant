@@ -5,6 +5,6 @@ const config = require('../config');
 gulp.task('server', function() {
   return gulp.src(config.dist)
     .pipe(server({
-      livereload: true
+    	host: '0.0.0.0'
     }));
 });
